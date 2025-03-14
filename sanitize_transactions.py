@@ -6,8 +6,8 @@ from dotenv import dotenv_values
 # Define your input and output files
 prefix = "./2024"
 input_files = ["part3_8-12.json", "part2_5-8.json", "part1_2-5.json"]
-output_file = "transactions_2024.json"
 input_files = [os.path.join(prefix, fp) for fp in input_files]
+output_file = "transactions_2024.json"
 
 # We'll use a dictionary to store transactions with their IDs as keys
 # This naturally handles deduplication since dictionary keys are unique
@@ -15,10 +15,12 @@ transactions_by_id = {}
 
 # categories json file as string
 categories_json = None
+zero_prompt = None
 
-OPEN_AI_KEY = dotenv_values(".env")["OPEN_AI_KEY"]
-print(f"OpenAi key: {OPEN_AI_KEY}")
-COMPLETIONS_MODEL = "gpt-4"
+my_env = dotenv_values(".env")
+OPEN_AI_KEY = my_env["OPEN_AI_KEY"]
+CATEGORIES_JSON = my_env["CATEGORIES_JSON"]
+COMPLETIONS_MODEL = "gpt-4o"
 
 # init client
 client = OpenAI(api_key=OPEN_AI_KEY)
@@ -26,84 +28,140 @@ client = OpenAI(api_key=OPEN_AI_KEY)
 
 def fetch_categories_file(path=None):
     if path is None:
-        path = r"C:\Users\baidh\transactions\categories.json"
+        path = CATEGORIES_JSON
     file = path
-    file_str = None
     with open(file, "r") as file:
-        file_str = file.read()
-    return file_str
+        return file.read()
+    return None
 
 
-def request_completion(prompt):
+def request_category_and_tags(messages):
     completion = client.chat.completions.create(
         model=COMPLETIONS_MODEL,
         temperature=0,
-        max_tokens=5,
+        max_tokens=50,
         top_p=1,
         frequency_penalty=0,
         presence_penalty=0,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
+        messages=messages,
+    )
+    print(f"Result: {completion.choices[0].message.content}")
+
+
+# Return tuple of category ID and list of tags
+def categorize_transaction(transaction):
+    categorize_subset = {
+        k: transaction[k]
+        for k in [
+            "transaction_type",
+            "merchant_name",
+            "original_amount",
+            "message1",
+            "message3",
+        ]
+    }
+    cat_subset_str = str(categorize_subset)
+    # print(f"Merchant hints: {cat_subset_str}")
+    message = {"role": "user", "content": cat_subset_str}
+    a = request_category_and_tags([zero_prompt, message])
+
+
+def clean_transactions():
+    # Process each input file
+    for file_path in input_files:
+        try:
+            # Read the JSON file
+            with open(file_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+
+            # Extract transactions
+            file_transactions = data.get("account_transactions", [])
+
+            # Count before adding to track duplicates
+            before_count = len(transactions_by_id)
+
+            # Add each transaction to our dictionary, using ID as key
+            # If a transaction with the same ID already exists, it will be overwritten
+            for transaction in file_transactions:
+                categorize_transaction(transaction)
+                transactions_by_id[transaction["id"]] = transaction
+
+            # Calculate how many new unique transactions were added
+            new_transactions = len(transactions_by_id) - before_count
+            duplicates = len(file_transactions) - new_transactions
+
+            print(f"Processed {file_path}: {len(file_transactions)} transactions")
+            print(f"  - Added {new_transactions} unique transactions")
+            if duplicates > 0:
+                print(f"  - Skipped {duplicates} duplicate transactions")
+
+        except Exception as e:
+            print(f"Error processing {file_path}: {e}")
+
+    # Convert our dictionary values back to a list for the final output
+    all_transactions = list(transactions_by_id.values())
+
+    # Create the output structure
+    combined_data = {"account_transactions": all_transactions}
+
+    # Write the combined data to the output file as FLAT
+    with open(output_file, "w", encoding="utf-8") as file:
+        json.dump(combined_data, file, ensure_ascii=False, indent=4)
+
+    print(
+        f"\nSummary: Combined {len(all_transactions)} unique transactions into {output_file}"
     )
 
-    return completion.choices[0].message.content
 
-
-def categorize_transaction(transaction):
-    pass
-
-
-categories_json = fetch_categories_file()
-# print(f"Categories file:{categories_json}")
-
-# Process each input file
-for file_path in input_files:
+def main():
+    file_path = input_files[0]
     try:
-        # Read the JSON file
         with open(file_path, "r", encoding="utf-8") as file:
             data = json.load(file)
 
-        # Extract transactions
         file_transactions = data.get("account_transactions", [])
 
-        # Count before adding to track duplicates
-        before_count = len(transactions_by_id)
-
-        # Add each transaction to our dictionary, using ID as key
-        # If a transaction with the same ID already exists, it will be overwritten
-        for transaction in file_transactions:
-            # Make sure the transaction has an id field
-            if "id" in transaction:
-                transactions_by_id[transaction["id"]] = transaction
-            else:
-                print(f"Warning: Found transaction without ID in {file_path}")
-
-        # Calculate how many new unique transactions were added
-        new_transactions = len(transactions_by_id) - before_count
-        duplicates = len(file_transactions) - new_transactions
-
-        print(f"Processed {file_path}: {len(file_transactions)} transactions")
-        print(f"  - Added {new_transactions} unique transactions")
-        if duplicates > 0:
-            print(f"  - Skipped {duplicates} duplicate transactions")
+        t = file_transactions[10]
+        categorize_transaction(t)
 
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
 
-# Convert our dictionary values back to a list for the final output
-all_transactions = list(transactions_by_id.values())
 
-# Create the output structure
-combined_data = {"account_transactions": all_transactions}
+context = """
+Your task is to categorize a given transaction into one of the predefined categories based on the provided merchant data. 
+Focus on accurately identifying the category that best represents the nature of the transaction.
 
-# Write the combined data to the output file
-with open(output_file, "w", encoding="utf-8") as file:
-    json.dump(combined_data, file, ensure_ascii=False, indent=4)
+Additionally, select one or more relevant tags for the transaction from a predefined list. 
+These tags should reflect key details or features of the transaction, such as the type of service or product, or any relevant attributes based on the merchant data.
 
-print(
-    f"\nSummary: Combined {len(all_transactions)} unique transactions into {output_file}"
-)
+Ensure both the category and tags are chosen as specifically and accurately as possible.
+
+**Special Rule**:
+
+- If the transaction is related to tobacco, nightlife, or similar activities, include the "vice" tag from the predefined tag list in your selected tags.
+
+- If the merchant is determined to be an online shopping platform such as eBay or Amazon or similar, include the "online-shopping" tag from the predefined tag list in your selected tags. 
+
+- If the transaction is related to ATM withdrawal, include the "cashout" tag from the predefined tag list in your selected tags. 
+
+- At least one of the following tags must always be included in the selected tags: "big-spending" or "medium-spending" or "minor-spending".
+
+Your response must follow the format below:
+    {
+      "catid": <chosen_category_id>,
+      "tags": ["<tag_1>", "<tag_2>", ...]
+    }
+Only return the formatted response without any code block or additional text or explanations."
+"""
+
+categories_json = fetch_categories_file()
+# print(f"Categories: {categories_json[:1000]}")
+zero_prompt = {
+    "role": "system",
+    "content": f"Categories_and_tags.json:\n{categories_json}{context}",
+}
+# print(f"Zero prompt: {str(zero_prompt)}")
+
+if __name__ == "__main__":
+    main()
