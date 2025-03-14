@@ -45,7 +45,12 @@ def request_category_and_tags(messages):
         presence_penalty=0,
         messages=messages,
     )
-    print(f"Result: {completion.choices[0].message.content}")
+
+    try:
+        return json.loads(completion.choices[0].message.content)
+    except Exception as e:
+        print(f"Error parsing OpenAi response as JSON: {e}")
+    return None
 
 
 # Return tuple of category ID and list of tags
@@ -56,14 +61,15 @@ def categorize_transaction(transaction):
             "transaction_type",
             "merchant_name",
             "original_amount",
+            "transaction_amount",
             "message1",
             "message3",
         ]
     }
     cat_subset_str = str(categorize_subset)
-    # print(f"Merchant hints: {cat_subset_str}")
+    print(f"Merchant hints: {cat_subset_str}")
     message = {"role": "user", "content": cat_subset_str}
-    a = request_category_and_tags([zero_prompt, message])
+    return request_category_and_tags([zero_prompt, message])
 
 
 def clean_transactions():
@@ -82,18 +88,21 @@ def clean_transactions():
 
             # Add each transaction to our dictionary, using ID as key
             # If a transaction with the same ID already exists, it will be overwritten
-            for transaction in file_transactions:
-                categorize_transaction(transaction)
+            for i, transaction in enumerate(file_transactions):
+                if i == 1:
+                    break
+                transaction.update(categorize_transaction(transaction))
                 transactions_by_id[transaction["id"]] = transaction
 
             # Calculate how many new unique transactions were added
             new_transactions = len(transactions_by_id) - before_count
             duplicates = len(file_transactions) - new_transactions
 
-            print(f"Processed {file_path}: {len(file_transactions)} transactions")
-            print(f"  - Added {new_transactions} unique transactions")
+            # print(f"Processed {file_path}: {len(file_transactions)} transactions")
+            # print(f"  - Added {new_transactions} unique transactions")
             if duplicates > 0:
-                print(f"  - Skipped {duplicates} duplicate transactions")
+                pass
+                # print(f"  - Skipped {duplicates} duplicate transactions")
 
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
@@ -128,30 +137,29 @@ def main():
         print(f"Error processing {file_path}: {e}")
 
 
-context = """
-Your task is to categorize a given transaction into one of the predefined categories based on the provided merchant data. 
+context = """Your task is to categorize a given transaction into one of the predefined categories based on the provided merchant data.
 Focus on accurately identifying the category that best represents the nature of the transaction.
 
-Additionally, select one or more relevant tags for the transaction from a predefined list. 
+Additionally, select one or more relevant tags for the transaction from a predefined list.
 These tags should reflect key details or features of the transaction, such as the type of service or product, or any relevant attributes based on the merchant data.
 
 Ensure both the category and tags are chosen as specifically and accurately as possible.
 
-**Special Rule**:
+Tags rules:
 
-- If the transaction is related to tobacco, nightlife, or similar activities, include the "vice" tag from the predefined tag list in your selected tags.
+- If the transaction is related to tobacco, nightlife, or similar activities, include the "vice" tag in your selected tags.
 
-- If the merchant is determined to be an online shopping platform such as eBay or Amazon or similar, include the "online-shopping" tag from the predefined tag list in your selected tags. 
+- If the merchant is determined to be an online shopping platform such as eBay or Amazon or similar, include the "online-shopping" tag in your selected tags.
 
-- If the transaction is related to ATM withdrawal, include the "cashout" tag from the predefined tag list in your selected tags. 
+- If the transaction is related to ATM withdrawal, include the "cashout" tag in your selected tags.
 
-- At least one of the following tags must always be included in the selected tags: "big-spending" or "medium-spending" or "minor-spending".
+- For every transaction include one of these tags: "money-added" or "big-spending" or "medium-spending" or "minor-spending".
 
 Your response must follow the format below:
-    {
-      "catid": <chosen_category_id>,
-      "tags": ["<tag_1>", "<tag_2>", ...]
-    }
+{
+  "category_id": <chosen_category_id>,
+  "tags": ["<tag_1>", "<tag_2>", ...]
+}
 Only return the formatted response without any code block or additional text or explanations."
 """
 
@@ -164,4 +172,4 @@ zero_prompt = {
 # print(f"Zero prompt: {str(zero_prompt)}")
 
 if __name__ == "__main__":
-    main()
+    clean_transactions()
