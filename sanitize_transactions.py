@@ -62,7 +62,7 @@ def request_category_and_tags(messages):
             print(f"Failed request: {e}, retrying in {sleep_time:.2f} seconds...")
             time.sleep(sleep_time)
 
-    print(f"Cached tokens: {completion.usage.prompt_tokens_details.cached_tokens}")
+    # print(f"Cached tokens: {completion.usage.prompt_tokens_details.cached_tokens}")
 
     try:
         return json.loads(completion.choices[0].message.content)
@@ -101,25 +101,25 @@ def clean_transactions():
             file_transactions = data.get("account_transactions", [])
 
             # Count before adding to track duplicates
-            before_count = len(transactions_by_id)
+            # before_count = len(transactions_by_id)
 
             # Add each transaction to our dictionary, using ID as key
             # If a transaction with the same ID already exists, it will be overwritten
             for i, transaction in enumerate(file_transactions):
-                if i == 5:
-                    break
+                # if i == 5:
+                #     break
                 transaction.update(categorize_transaction(transaction))
                 transactions_by_id[transaction["id"]] = transaction
 
             # Calculate how many new unique transactions were added
-            new_transactions = len(transactions_by_id) - before_count
-            duplicates = len(file_transactions) - new_transactions
+            # new_transactions = len(transactions_by_id) - before_count
+            # duplicates = len(file_transactions) - new_transactions
 
-            # print(f"Processed {file_path}: {len(file_transactions)} transactions")
-            # print(f"  - Added {new_transactions} unique transactions")
-            if duplicates > 0:
-                pass
-                # print(f"  - Skipped {duplicates} duplicate transactions")
+            # # print(f"Processed {file_path}: {len(file_transactions)} transactions")
+            # # print(f"  - Added {new_transactions} unique transactions")
+            # if duplicates > 0:
+            #     pass
+            #     # print(f"  - Skipped {duplicates} duplicate transactions")
 
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
@@ -185,6 +185,7 @@ Return only and strictly the following format, with no additional text or explan
 
 categories_json = fetch_categories_file()
 # print(f"Categories: {categories_json[:1000]}")
+# this translate to about ~1030 tokens, which makes it eligible for open ai cache at this time
 zero_prompt = {
     "role": "system",
     "content": f"Categories_and_tags.json:\n{categories_json}{context}",
