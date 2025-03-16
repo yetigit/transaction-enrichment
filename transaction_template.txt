@@ -1,0 +1,38 @@
+{
+  "oldTransaction": bool,
+  "id": string,
+  "transaction_sequence_number": null,
+  "credit_debit_indicator": string,
+  "account_info": null,
+  "transaction_type": {
+      "code": int,
+      "text": string
+  },
+  "merchant_name": string,
+  "entry_date_time": string,
+  "value_date": string,
+  "posting_date": string,
+  "purchase_date": string,
+  "instructed_amount": null,
+  "instructed_amount_currency": null,
+  "original_amount": {
+      "amount": float,
+      "currency_code": string
+  },
+  "reference_id": string,
+  "descriptive_text": string,
+  "has_details": null,
+  "transaction_amount": {
+      "amount": string,
+      "currency_code": string,
+  },
+  "balance_after_transaction": string,
+  "link": null,
+  "message3": string,
+  "message1": string,
+  "swishDetails": null,
+  "is_old_transaction": bool,
+  "verification_number_customer": string,
+  "exchange_rate": string,
+  "bgc_ticket_data": null
+}
