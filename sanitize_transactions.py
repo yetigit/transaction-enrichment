@@ -1,4 +1,7 @@
 from openai import OpenAI
+
+import time
+import random
 import json
 import os
 from dotenv import dotenv_values
@@ -36,22 +39,36 @@ def fetch_categories_file(path=None):
 
 
 def request_category_and_tags(messages):
-    completion = client.chat.completions.create(
-        model=COMPLETIONS_MODEL,
-        temperature=0,
-        max_tokens=50,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        messages=messages,
-    )
+    max_retries = 5
+    retries = 0
+    while retries < max_retries:
+        try:
+            completion = client.chat.completions.create(
+                model=COMPLETIONS_MODEL,
+                temperature=0,
+                max_tokens=50,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+                messages=messages,
+            )
+            break
+        except Exception as e:
+            retries += 1
+            if retries >= max_retries:
+                raise
+            # Exponential backoff with jitter
+            sleep_time = (2**retries) + random.random()
+            print(f"Failed request: {e}, retrying in {sleep_time:.2f} seconds...")
+            time.sleep(sleep_time)
+
+    print(f"Cached tokens: {completion.usage.prompt_tokens_details.cached_tokens}")
 
     try:
         return json.loads(completion.choices[0].message.content)
     except Exception as e:
         print(f"Error parsing OpenAi response as JSON: {e}")
-    return None
-
+        raise
 
 # Return tuple of category ID and list of tags
 def categorize_transaction(transaction):
@@ -67,7 +84,7 @@ def categorize_transaction(transaction):
         ]
     }
     cat_subset_str = str(categorize_subset)
-    print(f"Merchant hints: {cat_subset_str}")
+    # print(f"Merchant hints: {cat_subset_str}")
     message = {"role": "user", "content": cat_subset_str}
     return request_category_and_tags([zero_prompt, message])
 
@@ -89,7 +106,7 @@ def clean_transactions():
             # Add each transaction to our dictionary, using ID as key
             # If a transaction with the same ID already exists, it will be overwritten
             for i, transaction in enumerate(file_transactions):
-                if i == 1:
+                if i == 5:
                     break
                 transaction.update(categorize_transaction(transaction))
                 transactions_by_id[transaction["id"]] = transaction
@@ -137,30 +154,33 @@ def main():
         print(f"Error processing {file_path}: {e}")
 
 
-context = """Your task is to categorize a given transaction into one of the predefined categories based on the provided merchant data.
-Focus on accurately identifying the category that best represents the nature of the transaction.
+context = """Your task is to categorize a given financial transaction into one of the predefined categories based on the provided merchant data. The goal is to select the most accurate category that represents the nature of the transaction.
 
-Additionally, select one or more relevant tags for the transaction from a predefined list.
-These tags should reflect key details or features of the transaction, such as the type of service or product, or any relevant attributes based on the merchant data.
+In addition, assign one or more relevant tags from a predefined list. Tags help highlight key details such as the type of merchant, service, or product. Select them carefully to ensure accuracy.
 
-Ensure both the category and tags are chosen as specifically and accurately as possible.
+### **Additional tagging Rules:**
+1. **Vice-related Transactions**
+   - If the transaction involves tobacco or nightlife, include the `"vice"` tag.
 
-Tags rules:
+2. **Online Shopping**
+   - If the merchant is an e-commerce platform like Amazon, eBay, or similar, include the `"online-shopping"` tag.
 
-- If the transaction is related to tobacco, nightlife, or similar activities, include the "vice" tag in your selected tags.
+3. **Cash Withdrawals**
+   - If the transaction is an ATM withdrawal or similar cash-related event, include the `"cashout"` tag.
 
-- If the merchant is determined to be an online shopping platform such as eBay or Amazon or similar, include the "online-shopping" tag in your selected tags.
+4. **Spending Level** *(One of the following must be included in every transaction)*:
+   - `"money-added"` > Used for deposits, paychecks, refunds, or incoming transfers.
+   - `"big-spending"` > High-value purchases such as luxury goods, large bills, or travel.
+   - `"medium-spending"` > Mid-range transactions like dining out or moderate shopping.
+   - `"minor-spending"` > Small transactions like coffee, snacks, or minor fees.
 
-- If the transaction is related to ATM withdrawal, include the "cashout" tag in your selected tags.
-
-- For every transaction include one of these tags: "money-added" or "big-spending" or "medium-spending" or "minor-spending".
-
-Your response must follow the format below:
+Ensure precise classification, avoid redundant tags.
+### **Response Format:**
+Return only and strictly the following format, with no additional text or explanations or code block:
 {
   "category_id": <chosen_category_id>,
   "tags": ["<tag_1>", "<tag_2>", ...]
-}
-Only return the formatted response without any code block or additional text or explanations."
+}\
 """
 
 categories_json = fetch_categories_file()
@@ -172,4 +192,5 @@ zero_prompt = {
 # print(f"Zero prompt: {str(zero_prompt)}")
 
 if __name__ == "__main__":
+    # print(zero_prompt['content'])
     clean_transactions()
