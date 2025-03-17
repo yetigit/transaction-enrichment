@@ -30,6 +30,7 @@ client = OpenAI(api_key=OPEN_AI_KEY)
 
 def get_input_files():
     files = os.listdir(TRANSACTIONS_PATH)
+    files.sort()
 
     all_files=[]
     for file in files:
@@ -37,6 +38,7 @@ def get_input_files():
         # Check if it's a file (not a directory)
         if os.path.isfile(file_path):
             all_files.append(file_path)
+    all_files.reverse()
     return all_files
 
 def fetch_categories_file(path=None):
