@@ -6,6 +6,8 @@ import json
 import os
 from dotenv import dotenv_values
 
+from tqdm import tqdm
+
 # We'll use a dictionary to store transactions with their IDs as keys
 # This naturally handles deduplication since dictionary keys are unique
 transactions_by_id = {}
@@ -47,7 +49,6 @@ def fetch_categories_file(path=None):
     file = path
     with open(file, "r") as file:
         return file.read()
-    return None
 
 
 def request_category_and_tags(messages):
@@ -117,9 +118,7 @@ def clean_transactions():
 
             # Add each transaction to our dictionary, using ID as key
             # If a transaction with the same ID already exists, it will be overwritten
-            for i, transaction in enumerate(file_transactions):
-                # if i == 1:
-                #     break
+            for transaction in tqdm(file_transactions, desc="Processing transactions"):
                 transaction.update(categorize_transaction(transaction))
                 transactions_by_id[transaction["id"]] = transaction
 
