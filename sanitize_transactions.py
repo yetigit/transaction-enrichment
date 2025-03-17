@@ -6,12 +6,6 @@ import json
 import os
 from dotenv import dotenv_values
 
-# Define your input and output files
-prefix = "./2024"
-input_files = ["part3_8-12.json", "part2_5-8.json", "part1_2-5.json"]
-input_files = [os.path.join(prefix, fp) for fp in input_files]
-output_file = "transactions_2024.json"
-
 # We'll use a dictionary to store transactions with their IDs as keys
 # This naturally handles deduplication since dictionary keys are unique
 transactions_by_id = {}
@@ -22,12 +16,28 @@ zero_prompt = None
 
 my_env = dotenv_values(".env")
 OPEN_AI_KEY = my_env["OPEN_AI_KEY"]
-CATEGORIES_JSON = my_env["CATEGORIES_JSON"]
+TRANSACTIONS_PATH = my_env["TRANSACTIONS_PATH"]
+CATEGORIES_JSON = my_env.get("CATEGORIES_JSON", "./categories.json")
 COMPLETIONS_MODEL = "gpt-4o"
+
+input_files = []
+output_file = "transactions_2024.json"
+
 
 # init client
 client = OpenAI(api_key=OPEN_AI_KEY)
 
+
+def get_input_files():
+    files = os.listdir(TRANSACTIONS_PATH)
+
+    all_files=[]
+    for file in files:
+        file_path = os.path.join(TRANSACTIONS_PATH, file)
+        # Check if it's a file (not a directory)
+        if os.path.isfile(file_path):
+            all_files.append(file_path)
+    return all_files
 
 def fetch_categories_file(path=None):
     if path is None:
@@ -106,7 +116,7 @@ def clean_transactions():
             # Add each transaction to our dictionary, using ID as key
             # If a transaction with the same ID already exists, it will be overwritten
             for i, transaction in enumerate(file_transactions):
-                # if i == 5:
+                # if i == 1:
                 #     break
                 transaction.update(categorize_transaction(transaction))
                 transactions_by_id[transaction["id"]] = transaction
@@ -184,6 +194,7 @@ Return only and strictly the following format, with no additional text or explan
 """
 
 categories_json = fetch_categories_file()
+input_files = get_input_files()
 # print(f"Categories: {categories_json[:1000]}")
 # this translate to about ~1030 tokens, which makes it eligible for open ai cache at this time
 zero_prompt = {
