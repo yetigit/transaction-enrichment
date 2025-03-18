@@ -83,8 +83,21 @@ def request_category_and_tags(messages):
         print(f"Error parsing OpenAi response as JSON: {e}")
         raise
 
+# Override category for precision if needed
+def override_categorization(transaction):
+    merchant = transaction["merchant_name"]
+    if merchant == "HELOPAY HELLOPAY KER":
+        return {"category_id": 9, "tags": ["vice", "medium-spending"]}
+    elif merchant == "HELOPAY TELEP-ART GAL":
+        return {"category_id": 9, "tags": ["vice", "medium-spending"]}
+    else:
+        return None
+
 # Return tuple of category ID and list of tags
 def categorize_transaction(transaction):
+    cat_override = override_categorization(transaction)
+    if cat_override:
+        return cat_override
     categorize_subset = {
         k: transaction[k]
         for k in [
