@@ -90,6 +90,8 @@ def override_categorization(transaction):
         return {"category_id": 9, "tags": ["vice", "medium-spending"]}
     elif merchant == "HELOPAY TELEP-ART GAL":
         return {"category_id": 9, "tags": ["vice", "medium-spending"]}
+    elif "AMZN" in merchant:
+        return {"category_id": 7, "tags": ["online-shopping", "big-spending"]}
     else:
         return None
 
