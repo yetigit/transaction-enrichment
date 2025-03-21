@@ -7,7 +7,7 @@ This part is concerned with scrapping, categorizing and tagging the transactions
 
 ## Overview
 
-This project enhances transaction data by leveraging OpenAI's ChatGPT API (model gpt-4o) to assign relevant categories and tags, 
+This project enhances transaction data by leveraging **OpenAI's ChatGPT API (model gpt-4o)** to assign relevant <u>categories and tags</u>, 
 facilitating accurate transaction analysis.
 
 
@@ -36,11 +36,11 @@ You will get the data in parts if you scraped it like I did. Now you can categor
 - Open Ai API key
 - python modules -> `pip install -r requirements.txt`
 ---
-**~ Predefined Categories ~**
+**Predefined Categories**
 
 [**Categories**](https://github.com/yetigit/transaction-enrichment/blob/master/categories.json)
 
-**~ Categorization data subset ~**
+**Categorization data subset**
 
 [Transaction Template](https://github.com/yetigit/transaction-enrichment/blob/master/transaction_template.txt)
 ```python
@@ -59,7 +59,7 @@ You will get the data in parts if you scraped it like I did. Now you can categor
 ```
 
 ### Categorizer prompt
-**~ The prompt used to categorize based on merchant hints ~**
+**The prompt used to categorize based on merchant hints**
 ```python
 context = """Your task is to categorize a given financial transaction into one of the predefined categories based on the provided merchant data. The goal is to select the most accurate category that represents the nature of the transaction.
 
