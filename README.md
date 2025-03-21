@@ -1,7 +1,9 @@
 # Transaction Enrichment
 
 This repo is one of a 2 parts personal project aiming at scrapping my bank account transaction data and running analysis on it. 
-This part is concerned with scrapping, categorizing and tagging the transactions.
+This part is concerned with scrapping, categorizing and tagging the transactions. 
+
+[**See the analysis part of the project**](https://github.com/yetigit/transaction-watch)
 
 [**Zero prompt for categorizing**](#categorizer-prompt)
 
