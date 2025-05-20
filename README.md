@@ -1,5 +1,8 @@
 # Transaction Enrichment
 
+![category_spending_pie](https://github.com/user-attachments/assets/56678d82-40ee-4604-8143-c896972d1b06)
+
+
 This repo is one of a 2 parts personal project aiming at scrapping my bank account transaction data and running analysis on it. 
 This part is concerned with scrapping, categorizing and tagging the transactions. 
 
